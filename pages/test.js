@@ -1,4 +1,3 @@
-// Import necessary modules
 import { MongoClient, ServerApiVersion } from "mongodb";
 import { ChatOpenAI } from "langchain/chat_models/openai";
 import { LLMChain } from "langchain/chains";
@@ -67,25 +66,36 @@ const processDataAndIngestToMongoDB = async () => {
     const processedData = processData(data);
 
     for (const item of processedData) {
-      const chain = new LLMChain({
-        prompt: item.vector[0][0], // Assuming the comment is the first element of the first vector
-        outputKey: "records",
-        outputParser: outputFixingParser,
-      });
+      const comment = item.vector[0][0]; // Assuming the comment is the first element of the first vector
+      const response = item.vector[0][1]; // Assuming the response is the second element of the first vector
 
-      const result = await chain.call();
+      // Check if the comment and response are not undefined or empty
+      if (comment && response) {
+        const chain = new LLMChain({
+          prompt: comment,
+          outputKey: "records",
+          outputParser: outputFixingParser,
+        });
 
-      const vector = result.records.map((record) => record.fields);
+        const controller = new AbortController();
+        const result = await chain.call({ signal: controller.signal });
 
-      // Insert the data into MongoDB
-      await collection.insertOne({
-        id: item.id,
-        comment: item.vector[0][0], // Assuming the comment is the first element of the first vector
-        response: item.vector[0][1], // Assuming the response is the second element of the first vector
-        vector: vector,
-      });
+        const vector = result.records.map((record) => record.fields);
 
-      console.log(`Inserted item with id ${item.id} into MongoDB`);
+        // Insert the data into MongoDB
+        await collection.insertOne({
+          id: item.id,
+          comment: comment,
+          response: response,
+          vector: vector,
+        });
+
+        console.log(`Inserted item with id ${item.id} into MongoDB`);
+      } else {
+        console.log(
+          `Skipped item with id ${item.id} due to missing comment or response`
+        );
+      }
     }
   } catch (error) {
     // Log any errors that occur during processing or inserting data
