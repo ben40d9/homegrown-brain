@@ -10,9 +10,10 @@ import "dotenv/config";
 import { readSpreadsheet } from "../src/utils/readSpreadsheet.js";
 import { processData } from "../src/utils/processData.js"; // Assuming processData is exported from this file
 
+const pw = process.env.MONGO_URI_PW;
+
 // MongoDB connection string
-const uri =
-  "mongodb+srv://sud-comarkco:sud1234@sudcluster1.44hacv6.mongodb.net/?retryWrites=true&w=majority";
+const uri = `mongodb+srv://sud-comarkco:sud1234@sudcluster1.44hacv6.mongodb.net/?retryWrites=true&w=majority`;
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
 const client = new MongoClient(uri, {
@@ -64,51 +65,34 @@ const processDataAndIngestToMongoDB = async () => {
 
     // Process the data
     const processedData = processData(data);
+    console.log(processedData);
 
-    for (const item of processedData) {
-      const comment = item.vector[0][0]; // Assuming the comment is the first element of the first vector
-      const response = item.vector[0][1]; // Assuming the response is the second element of the first vector
+    // Insert the processed data into the collection
+    const insertResult = await collection.insertMany(processedData);
+    console.log("Data has been successfully inserted into the collection");
 
-      // Check if the comment and response are not undefined or empty
-      if (comment && response) {
-        const chain = new LLMChain({
-          prompt: comment,
-          outputKey: "records",
-          outputParser: outputFixingParser,
-        });
+    // Get the inserted data
+    const insertedData = await collection
+      .find({ _id: { $in: insertResult.insertedIds } })
+      .toArray();
+    console.log("Inserted data:", insertedData);
 
-        const controller = new AbortController();
-        const result = await chain.call({ signal: controller.signal });
-
-        const vector = result.records.map((record) => record.fields);
-
-        // Insert the data into MongoDB
-        await collection.insertOne({
-          id: item.id,
-          comment: comment,
-          response: response,
-          vector: vector,
-        });
-
-        console.log(`Inserted item with id ${item.id} into MongoDB`);
+    // Check that the inserted data contains text
+    for (const doc of insertedData) {
+      if (!doc.text) {
+        console.log("Document does not contain text:", doc);
       } else {
-        console.log(
-          `Skipped item with id ${item.id} due to missing comment or response`
-        );
+        console.log("Document contains text:", doc);
       }
     }
-  } catch (error) {
-    // Log any errors that occur during processing or inserting data
-    console.error(
-      "An error occurred while processing or inserting data:",
-      error
-    );
-  } finally {
-    // Ensures that the client will close when you finish/error
+
+    // Close the connection
     await client.close();
-    console.log("Closed the MongoDB connection");
+    console.log("Connection to MongoDB server has been closed");
+  } catch (error) {
+    // Log any errors that occur during data processing or insertion
+    console.error("An error occurred:", error);
   }
 };
 
-// Call the function directly
 processDataAndIngestToMongoDB().catch(console.error);
