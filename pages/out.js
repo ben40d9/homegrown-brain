@@ -6,8 +6,8 @@ import { readSpreadsheet } from "../src/utils/readSpreadsheet.js";
 import { processData } from "../src/utils/processData.js";
 // Replace *** with your actual Cohere API key
 
-console.log(process.env);
-console.log(process.env.COH_API_KEY);
+// console.log(process.env);
+// console.log(process.env.COH_API_KEY);
 const cohereApiKey = process.env.COH_API_KEY;
 const uri = `mongodb+srv://sud-comarkco:sud1234@sudcluster1.44hacv6.mongodb.net/?retryWrites=true&w=majority`;
 
