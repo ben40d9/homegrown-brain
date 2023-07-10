@@ -1,20 +1,16 @@
+// Importing necessary dependencies from the MongoDB driver and your own custom modules
 import { MongoClient, ServerApiVersion } from "mongodb";
-import { ChatOpenAI } from "langchain/chat_models/openai";
-import { LLMChain } from "langchain/chains";
-import {
-  StructuredOutputParser,
-  OutputFixingParser,
-} from "langchain/output_parsers";
-import { z } from "zod";
+import { MongoDBAtlasVectorSearch } from "langchain/vectorstores/mongodb_atlas";
+import { CohereEmbeddings } from "langchain/embeddings/cohere";
 import "dotenv/config";
 import { readSpreadsheet } from "../src/utils/readSpreadsheet.js";
-import { processData } from "../src/utils/processData.js"; // Assuming processData is exported from this file
+import { processData } from "../src/utils/processData.js";
 
-// MongoDB connection string
-const uri =
-  "mongodb+srv://sud-comarkco:sud1234@sudcluster1.44hacv6.mongodb.net/?retryWrites=true&w=majority";
+// Set up your Cohere API key and MongoDB Atlas URI
+const cohereApiKey = "WsQgaveHg37zzlX8dnFDXTxEwovkv8doKw90PfCy";
+const uri = `mongodb+srv://sud-comarkco:sud1234@sudcluster1.44hacv6.mongodb.net/?retryWrites=true&w=majority`;
 
-// Create a MongoClient with a MongoClientOptions object to set the Stable API version
+// Create a new MongoDB client
 const client = new MongoClient(uri, {
   serverApi: {
     version: ServerApiVersion.v1,
@@ -23,95 +19,51 @@ const client = new MongoClient(uri, {
   },
 });
 
-// Define the schema for the data
-const outputParser = StructuredOutputParser.fromZodSchema(
-  z
-    .array(
-      z.object({
-        fields: z.object({
-          comment: z.string().describe("The comment made on the TikTok post"),
-          response: z.string().describe("The response to the comment"),
-        }),
-      })
-    )
-    .describe(
-      "An array of objects, each representing a TikTok comment and its response"
-    )
-);
-
-// Define the output fixing parser
-const outputFixingParser = OutputFixingParser.fromLLM(ChatOpenAI, outputParser);
-
+// Define an async function that processes data and ingests it into MongoDB
 const processDataAndIngestToMongoDB = async () => {
   try {
-    // Connect the client to the server
+    // Connect to the MongoDB server
     await client.connect();
     console.log("Connected successfully to MongoDB server");
-  } catch (error) {
-    // Log any errors that occur during connection
-    console.error("An error occurred while connecting to MongoDB:", error);
-    return;
-  }
 
-  try {
-    // Get the database and collection
-    const db = client.db("tiktok");
-    const collection = db.collection("comments");
+    // Get the database and collection where the data will be stored
+    const db = client.db("tiktok_attempt1");
+    const collection = db.collection("hero");
 
-    // Get all of the data from the spreadsheet
+    // Read data from a spreadsheet
     const data = readSpreadsheet("../../tiktok-data.xlsx");
-    console.log("Read data from spreadsheet");
+    console.log("Read data from spreadsheet:", data);
 
-    // Process the data
+    // Process the data to prepare it for ingestion
     const processedData = processData(data);
+    console.log("Processed data:", processedData);
 
-    for (const item of processedData) {
-      const comment = item.vector[0][0]; // Assuming the comment is the first element of the first vector
-      const response = item.vector[0][1]; // Assuming the response is the second element of the first vector
-
-      // Check if the comment and response are not undefined or empty
-      if (comment && response) {
-        const chain = new LLMChain({
-          prompt: comment,
-          outputKey: "records",
-          outputParser: outputFixingParser,
-        });
-
-        const controller = new AbortController();
-        const result = await chain.call({
-          prompt: comment,
-          signal: controller.signal,
-        });
-
-        const vector = result.records.map((record) => record.fields);
-
-        // Insert the data into MongoDB
-        await collection.insertOne({
-          id: item.id,
-          comment: comment,
-          response: response,
-          vector: vector,
-        });
-
-        console.log(`Inserted item with id ${item.id} into MongoDB`);
-      } else {
-        console.log(
-          `Skipped item with id ${item.id} due to missing comment or response`
-        );
+    // Generate embeddings for the comments and store them in the MongoDB Atlas collection
+    await MongoDBAtlasVectorSearch.fromTexts(
+      processedData.map((item) => item.comment), // Extract comments from the processed data
+      processedData, // Use the processed data as metadata
+      new CohereEmbeddings({ apiKey: cohereApiKey }), // Use the Cohere API to generate embeddings
+      {
+        collection: collection,
+        indexName: "default",
+        textKey: "comment",
+        embeddingKey: "embedding",
       }
-    }
-  } catch (error) {
-    // Log any errors that occur during processing or inserting data
-    console.error(
-      "An error occurred while processing or inserting data:",
-      error
     );
-  } finally {
-    // Ensures that the client will close when you finish/error
+    console.log("Data has been successfully inserted into the collection");
+
+    // Retrieve the first 5 documents in the collection
+    const insertedData = await collection.find({}).limit(5).toArray();
+    console.log("First 5 documents in the collection:", insertedData);
+
+    // Close the connection to the MongoDB server
     await client.close();
-    console.log("Closed the MongoDB connection");
+    console.log("Connection to MongoDB server has been closed");
+  } catch (error) {
+    // Log any errors that occur
+    console.error("An error occurred:", error);
   }
 };
 
-// Call the function directly
+// Run the processDataAndIngestToMongoDB function
 processDataAndIngestToMongoDB().catch(console.error);
