@@ -20,6 +20,9 @@ dependencies:
   autoprefixer:
     specifier: 10.4.14
     version: 10.4.14(postcss@8.4.25)
+  cohere-ai:
+    specifier: ^6.2.2
+    version: 6.2.2
   dotenv:
     specifier: ^16.3.1
     version: 16.3.1
@@ -31,7 +34,7 @@ dependencies:
     version: 13.4.9(eslint@8.44.0)(typescript@5.1.6)
   langchain:
     specifier: ^0.0.103
-    version: 0.0.103(@pinecone-database/pinecone@0.1.6)(mongodb@5.7.0)
+    version: 0.0.103(@pinecone-database/pinecone@0.1.6)(cohere-ai@6.2.2)(mongodb@5.7.0)
   mongodb:
     specifier: ^5.7.0
     version: 5.7.0
@@ -753,6 +756,10 @@ packages:
   /codepage@1.15.0:
     resolution: {integrity: sha512-3g6NUTPd/YtuuGrhMnOMRjFc+LJw/bnMp3+0r/Wcz3IXUuCosKRJvMphm5+Q+bvTVGcJJuRvVLuYba+WojaFaA==}
     engines: {node: '>=0.8'}
+    dev: false
+
+  /cohere-ai@6.2.2:
+    resolution: {integrity: sha512-+Tq+4e8N/YWKJqFpWaULsfbZR/GOvGh8WWYFKR1bpipu8bCok3VcbTPnBmIToQiIqOgFpGk3HsA4b0guVyL3vg==}
     dev: false
 
   /color-convert@2.0.1:
@@ -1913,7 +1920,7 @@ packages:
       object.values: 1.1.6
     dev: false
 
-  /langchain@0.0.103(@pinecone-database/pinecone@0.1.6)(mongodb@5.7.0):
+  /langchain@0.0.103(@pinecone-database/pinecone@0.1.6)(cohere-ai@6.2.2)(mongodb@5.7.0):
     resolution: {integrity: sha512-vRkDSDPA76dpM23WrSeZr4F616E1EW08Ec+2HX15WFKoiUCd+fmkdfbjeJLXWYwFxKG5iy2jVE3d00nJ/8tqAw==}
     engines: {node: '>=18'}
     peerDependencies:
@@ -2083,6 +2090,7 @@ packages:
       ansi-styles: 5.2.0
       binary-extensions: 2.2.0
       camelcase: 6.3.0
+      cohere-ai: 6.2.2
       decamelize: 1.2.0
       expr-eval: 2.0.2
       flat: 5.0.2
