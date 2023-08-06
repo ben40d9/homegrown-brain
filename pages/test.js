@@ -1,98 +1,120 @@
 import { MongoClient, ServerApiVersion } from "mongodb";
-import { ChatOpenAI } from "langchain/chat_models/openai";
-import { LLMChain } from "langchain/chains";
-import {
-  StructuredOutputParser,
-  OutputFixingParser,
-} from "langchain/output_parsers";
-import { z } from "zod";
+import { MongoDBAtlasVectorSearch } from "langchain/vectorstores/mongodb_atlas";
+import { CohereEmbeddings } from "langchain/embeddings/cohere";
 import "dotenv/config";
 import { readSpreadsheet } from "../src/utils/readSpreadsheet.js";
-import { processData } from "../src/utils/processData.js"; // Assuming processData is exported from this file
+import { processData, processJSONData } from "../src/utils/processData.js";
+import { readAndProcessJSON } from "../src/utils/processing/jsonProcessor.js";
 
-const pw = process.env.MONGO_URI_PW;
-
-// MongoDB connection string
+// Set up Cohere API key and MongoDB Atlas URI.
+const cohereApiKey = "WsQgaveHg37zzlX8dnFDXTxEwovkv8doKw90PfCy";
 const uri = `mongodb+srv://sud-comarkco:sud1234@sudcluster1.44hacv6.mongodb.net/?retryWrites=true&w=majority`;
 
-// Create a MongoClient with a MongoClientOptions object to set the Stable API version
+// Create a new MongoDB client with server API configurations.
 const client = new MongoClient(uri, {
   serverApi: {
     version: ServerApiVersion.v1,
-    strict: true,
+    strict: false,
     deprecationErrors: true,
+    apiStrict: false, // apiStrict is set to false.
   },
 });
 
-// Define the schema for the data
-const outputParser = StructuredOutputParser.fromZodSchema(
-  z
-    .array(
-      z.object({
-        fields: z.object({
-          comment: z.string().describe("The comment made on the TikTok post"),
-          response: z.string().describe("The response to the comment"),
-        }),
-      })
-    )
-    .describe(
-      "An array of objects, each representing a TikTok comment and its response"
-    )
-);
-
-// Define the output fixing parser
-const outputFixingParser = OutputFixingParser.fromLLM(ChatOpenAI, outputParser);
-
-const processDataAndIngestToMongoDB = async () => {
+// Define an async function to process and store data in MongoDB and then perform a similarity search.
+const processDataAndIngestToMongoDBAndPerformSearch = async () => {
   try {
-    // Connect the client to the server
+    // Connect to the MongoDB server.
     await client.connect();
     console.log("Connected successfully to MongoDB server");
-  } catch (error) {
-    // Log any errors that occur during connection
-    console.error("An error occurred while connecting to MongoDB:", error);
-    return;
-  }
 
-  try {
-    // Get the database and collection
-    const db = client.db("tiktok");
-    const collection = db.collection("comments");
+    // Get the database and collection where data will be stored.
+    const db = client.db("tiktok_attempt1");
+    const collection = db.collection("main");
 
-    // Get all of the data from the spreadsheet
-    const data = readSpreadsheet("../../tiktok-data.xlsx");
-    console.log("Read data from spreadsheet");
+    // Read data from a spreadsheet.
+    const spreadsheetData = readSpreadsheet("../../tiktok-data.xlsx");
+    const processedSpreadsheetData = processData(spreadsheetData);
 
-    // Process the data
-    const processedData = processData(data);
-    console.log(processedData);
+    // Read and process data from the JSON file.
+    const jsonData = readAndProcessJSON("../../data/comments.json");
+    const processedJSONData = processJSONData(jsonData);
 
-    // Insert the processed data into the collection
-    const insertResult = await collection.insertMany(processedData);
+    // Combine the data from the spreadsheet and the JSON file.
+    const combinedData = [...processedSpreadsheetData, ...processedJSONData];
+
+    // Generate embeddings for the comments and store them in MongoDB Atlas collection.
+    await MongoDBAtlasVectorSearch.fromTexts(
+      combinedData.map((item) => item.comment),
+      combinedData,
+      new CohereEmbeddings({ apiKey: cohereApiKey }),
+      {
+        collection: collection,
+        indexName: "default",
+        textKey: "comment",
+        embeddingKey: "embedding",
+      }
+    );
     console.log("Data has been successfully inserted into the collection");
 
-    // Get the inserted data
-    const insertedData = await collection
-      .find({ _id: { $in: insertResult.insertedIds } })
-      .toArray();
-    console.log("Inserted data:", insertedData);
-
-    // Check that the inserted data contains text
-    for (const doc of insertedData) {
-      if (!doc.text) {
-        console.log("Document does not contain text:", doc);
-      } else {
-        console.log("Document contains text:", doc);
+    // Initialize vectorStore for similarity search.
+    const vectorStore = new MongoDBAtlasVectorSearch(
+      new CohereEmbeddings({ apiKey: cohereApiKey }),
+      {
+        collection: collection,
+        indexName: "default",
+        textKey: "comment",
+        embeddingKey: "embedding",
       }
-    }
+    );
 
-    // Close the connection
+    //will be our comment test variable for now, until we build out the UI to enter comment
+    const comment = "cleaning sud scrub";
+
+    // Perform a similarity search, getting 5 most similar
+    // const similarComments = await vectorStore.similaritySearch(comment, 5);
+
+    // console.log(
+    //   `The amount of similar comments to '${comment}':`,
+    //   similarComments.length
+    // );
+
+    // var as the docs does it
+    // const relevantDocs = await vectorStore.similaritySearch(comment, (k = 5));
+
+    const relevantDocs = await vectorStore.similaritySearch(comment, 10);
+
+    console.log(
+      `The amount of similar comments to '${comment}':`,
+      relevantDocs.length
+    );
+
+    console.log(
+      `The most similar comments to '${comment}':`,
+      relevantDocs[0],
+      relevantDocs[1],
+      relevantDocs[2],
+      relevantDocs[3],
+      relevantDocs[4],
+      relevantDocs[5],
+      relevantDocs[6],
+      relevantDocs[7],
+      relevantDocs[8],
+      relevantDocs[9],
+      relevantDocs[10]
+    );
+
+    // // Retrieve the first 5 documents in the collection.
+    // const insertedData = await collection.find({}).limit(5).toArray();
+    // console.log("First 5 documents in the collection:", insertedData);
+
+    // Close the connection to the MongoDB server.
     await client.close();
     console.log("Connection to MongoDB server has been closed");
   } catch (error) {
-    // Log any errors that occur during data processing or insertion
+    // Log any errors.
     console.error("An error occurred:", error);
   }
 };
 
-processDataAndIngestToMongoDB().catch(console.error);
+// Run the processDataAndIngestToMongoDBAndPerformSearch function
+processDataAndIngestToMongoDBAndPerformSearch().catch(console.error);
