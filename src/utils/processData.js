@@ -66,24 +66,20 @@ export function processData(data) {
     });
 }
 
-// export function processData(data) {
-//   return (
-//     data
-
-//       // Remove any rows that don't have a value for the Comment or Reply3 fields
-//       .filter((item) => item.Comment.trim() !== "" && item.Reply3.trim() !== "")
-//       .map((item, index) => {
-//         // console.log(
-//         //   `Processing item ${index}: Comment = ${item.Comment}, Reply3 = ${item.Reply3}`
-//         // );
-//         return {
-//           id: index.toString(),
-//           vector: [
-//             data.map((item) => {
-//               return [item.Comment, item.Reply3];
-//             }),
-//           ],
-//         };
-//       })
-//   );
-// }
+// This function processes the raw data from the JSON file.
+// It iterates over each comment, and for each reply to the comment, it creates a new object
+// with the comment, reply, unique id, and category, and adds these objects to the processed data array.
+export function processJSONData(data) {
+  let processedData = [];
+  data.forEach((item, index) => {
+    item.replies.forEach((reply, replyIndex) => {
+      processedData.push({
+        id: `${index}-${replyIndex}`, // Create a unique ID for each comment-reply pair
+        comment: item.comment,
+        reply: reply,
+        category: categorizeComment(item.comment), // Replace this with the actual function you're using to categorize comments
+      });
+    });
+  });
+  return processedData;
+}
