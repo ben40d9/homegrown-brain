@@ -8,10 +8,15 @@ import { processData, processJSONData } from "../../utils/processData.js";
 import { readAndProcessJSON } from "../../utils/processing/jsonProcessor.js";
 // Set up Cohere API key and MongoDB Atlas URI.
 
-const COHERE_API_KEY = `${process.env.COHERE_API_KEY}`;
+import { COHERE_API_KEY } from "../../data/hidden/hiddenenvVars.js";
 
-// Set up your Cohere API key and MongoDB Atlas URI
-const cohereApiKey = COHERE_API_KEY;
+const NEXT_PUBLIC_COHERE_API_KEY = `${process.env.COHERE_API_KEY}`;
+console.log(`env var: ${NEXT_PUBLIC_COHERE_API_KEY}`);
+
+console.log(`The hidden var from the js file : ${COHERE_API_KEY}`);
+
+const cohereApiKey = `${COHERE_API_KEY}`;
+
 const uri = `mongodb+srv://sud-comarkco:sud1234@sudcluster1.44hacv6.mongodb.net/?retryWrites=true&w=majority`;
 
 // Create a new MongoDB client with server API configurations.

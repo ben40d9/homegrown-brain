@@ -4,8 +4,13 @@ import { MongoDBAtlasVectorSearch } from "langchain/vectorstores/mongodb_atlas";
 import { CohereEmbeddings } from "langchain/embeddings/cohere";
 import "dotenv/config";
 
-const COHERE_API_KEY = `${process.env.COHERE_API_KEY}`;
-const cohereApiKey = "WsQgaveHg37zzlX8dnFDXTxEwovkv8doKw90PfCy";
+import { COHERE_API_KEY } from "../../data/hidden/hiddenenvVars.js";
+
+const NEXT_PUBLIC_COHERE_API_KEY = `${process.env.COHERE_API_KEY}`;
+console.log(`env var: ${NEXT_PUBLIC_COHERE_API_KEY}`);
+console.log(`The hidden var from the js file : ${COHERE_API_KEY}`);
+
+const cohereApiKey = `${COHERE_API_KEY}`;
 
 // Set up your Cohere API key and MongoDB Atlas URI
 // const cohereApiKey = COHERE_API_KEY;

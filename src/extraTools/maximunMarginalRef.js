@@ -4,10 +4,15 @@ import { MongoClient, ServerApiVersion } from "mongodb";
 import "dotenv/config";
 
 // Set up your Cohere API key and MongoDB Atlas URI
-const COHERE_API_KEY = `${process.env.COHERE_API_KEY}`;
+import { COHERE_API_KEY } from "../../data/hidden/hiddenenvVars.js";
+
+const NEXT_PUBLIC_COHERE_API_KEY = `${process.env.COHERE_API_KEY}`;
+console.log(`env var: ${NEXT_PUBLIC_COHERE_API_KEY}`);
+console.log(`The hidden var from the js file : ${COHERE_API_KEY}`);
+
+const cohereApiKey = `${COHERE_API_KEY}`;
 
 const uri = `mongodb+srv://sud-comarkco:sud1234@sudcluster1.44hacv6.mongodb.net/?retryWrites=true&w=majority`;
-const cohereApiKey = `${COHERE_API_KEY}`;
 
 // Create a new MongoDB client with server API configurations.
 const client = new MongoClient(uri, {
