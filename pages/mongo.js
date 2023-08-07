@@ -6,8 +6,10 @@ import "dotenv/config";
 import { readSpreadsheet } from "../src/utils/readSpreadsheet.js";
 import { processData } from "../src/utils/processData.js";
 
+const COHERE_API_KEY = `${process.env.COHERE_API_KEY}`;
+
 // Set up your Cohere API key and MongoDB Atlas URI
-const cohereApiKey = "WsQgaveHg37zzlX8dnFDXTxEwovkv8doKw90PfCy";
+const cohereApiKey = COHERE_API_KEY;
 const uri = `mongodb+srv://sud-comarkco:sud1234@sudcluster1.44hacv6.mongodb.net/?retryWrites=true&w=majority`;
 
 // Create a new MongoDB client
@@ -16,6 +18,7 @@ const client = new MongoClient(uri, {
     version: ServerApiVersion.v1,
     strict: true,
     deprecationErrors: true,
+    apiStrict: false, // Set apiStrict to false
   },
 });
 
@@ -28,7 +31,7 @@ const processDataAndIngestToMongoDB = async () => {
 
     // Get the database and collection where the data will be stored
     const db = client.db("tiktok_attempt1");
-    const collection = db.collection("hero");
+    const collection = db.collection("huh");
 
     // Read data from a spreadsheet
     const data = readSpreadsheet("../../tiktok-data.xlsx");
